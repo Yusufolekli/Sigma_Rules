@@ -1,0 +1,52 @@
+title: Suspicious Fileless Execution Chain (FormBook-style)
+id: 1b6d4fae-6ad2-4b14-85c2-cfc9985ac458
+description: Detects suspicious behavior chain resembling FormBook fileless malware execution using process spawning, DLL execution from temp, registry persistence, and memory injection.
+status: experimental
+author: Yusuf Can Olekli
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_word_spawn:
+    ParentImage|endswith: '\\WINWORD.EXE'
+    Image|endswith: '\\cmd.exe'
+
+  selection_cmd_rundll:
+    ParentImage|endswith: '\\cmd.exe'
+    Image|endswith: '\\rundll32.exe'
+
+  selection_rundll_temp:
+    Image|endswith: '\\rundll32.exe'
+    CommandLine|contains|all:
+      - '%TEMP%'
+      - '.dll'
+
+  selection_registry_persistence:
+    EventID: 13
+    TargetObject|contains: 'Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+
+  selection_injection_apis:
+    EventID: 1
+    CallTrace|contains|all:
+      - 'NtMapViewOfSection'
+      - 'Wow64SetThreadContext'
+
+  condition: selection_word_spawn and selection_cmd_rundll and selection_rundll_temp and selection_registry_persistence and selection_injection_apis
+fields:
+  - Image
+  - ParentImage
+  - CommandLine
+  - TargetObject
+  - CallTrace
+  - EventID
+tags:
+  - attack.execution
+  - attack.t1059.003
+  - attack.t1218.011
+  - attack.persistence
+  - attack.t1547.001
+  - attack.defense_evasion
+  - attack.t1055
+  - attack.t1055.012
+  - detection.fileless
+  - malware.formbook
